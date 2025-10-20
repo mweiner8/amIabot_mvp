@@ -1,245 +1,178 @@
 # AmIABot.com MVP 🤖
 
-A modern Turing Test game where users chat for 3 minutes and guess if their partner is human or AI.
+A modern Turing Test game built with **Flask** and **Socket.IO**, where players chat in real time and try to guess whether their partner is **a human or an AI**.
 
-## 🎯 Features
+This is a functional MVP (minimum viable product) using in-memory state (`FakeRedis`) and OpenAI’s API for the bot’s responses.
 
-- **Real-time Chat**: WebSocket-based messaging with <500ms latency
-- **Smart Matching**: Prioritizes human-to-human connections, falls back to AI
-- **Turing Test AI**: GPT-3.5 powered bot designed to be indistinguishable from humans
-- **Mobile Responsive**: Works perfectly on phones, tablets, and desktop
-- **No Registration**: Jump in and play immediately
+---
 
-## 🚀 Quick Start
+## 🎯 What It Does
 
-### Prerequisites
+- **Instant Play**: No login — users join and are paired automatically.
+- **Real-Time Chat**: Uses Flask-SocketIO for low-latency messaging.
+- **Human-First Matching**: Tries to match players with other humans; if none found, pairs with an AI bot after 15–25 seconds.
+- **Turing Test Gameplay**: 3-minute chat → 30-second decision → reveal.
+- **AI Bot Partner**: Uses GPT-3.5 with human-like tone, timing, and small imperfections.
+- **Fallback Mode**: Bot still replies with canned human-like messages if OpenAI API fails.
+- **Self-contained**: No database or Redis needed — runs entirely in memory.
 
-- Python 3.8+ 
-- Redis server
-- OpenAI API key
+---
 
-### Installation
-
-1. **Clone and setup**:
-   ```bash
-   git clone <repository>
-   cd amiabot-mvp
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure environment**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your OpenAI API key and other settings
-   ```
-
-4. **Start Redis**:
-   ```bash
-   redis-server
-   ```
-
-5. **Run the application**:
-   ```bash
-   python app.py
-   ```
-
-6. **Open in browser**: `http://localhost:5000`
-
-## 📁 Project Structure
+## 🧩 Project Structure
 
 ```
-amiabot-mvp/
-├── app.py              # Main Flask application
-├── config.py           # Configuration management
-├── bot.py              # AI conversation bot
-├── game_state.py       # Game state management
+amiabot/
+├── app.py              # Flask + Socket.IO server and event handlers
+├── bot.py              # GPT-powered Turing bot logic
+├── config.py           # Environment-based configuration
+├── game_state.py       # Thread-safe in-memory matchmaking and session tracking
 ├── templates/
-│   └── index.html      # Frontend interface
-├── requirements.txt    # Python dependencies
-├── .env.example        # Environment variables template
-└── README.md          # This file
+│   └── index.html      # Frontend (WebSocket chat UI)
+└── README.md
 ```
+
+---
 
 ## ⚙️ Configuration
 
 ### Environment Variables
 
 | Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | Your OpenAI API key | **Required** |
-| `SECRET_KEY` | Flask secret key | Auto-generated |
-| `REDIS_URL` | Redis connection URL | `redis://localhost:6379` |
-| `DEBUG` | Enable debug mode | `True` |
-| `PORT` | Server port | `5000` |
-
-### Game Settings
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `QUEUE_WAIT_TIME` | Seconds to wait for human match | `30` |
-| `CONVERSATION_TIME` | Chat duration in seconds | `180` (3 min) |
+|-----------|-------------|----------|
+| `OPENAI_API_KEY` | OpenAI API key | **Required** |
+| `SECRET_KEY` | Flask secret key | Randomly generated |
+| `PORT` | Port for Flask to bind | `5000` |
+| `QUEUE_WAIT_TIME` | How long to wait for human before fallback | `30` |
+| `CONVERSATION_TIME` | Chat duration (seconds) | `180` |
 | `DECISION_TIME` | Decision phase duration | `30` |
 
-## 🎮 How It Works
-
-1. **Queue Phase**: 30-second wait to find human partners
-2. **Chat Phase**: 3-minute real-time conversation
-3. **Decision Phase**: 30 seconds to guess Bot or Human
-4. **Results**: Reveals truth and shows accuracy
-
-## 🤖 AI Bot Features
-
-- **Human-like Responses**: Sophisticated prompting for natural conversation
-- **Realistic Timing**: 1-4 second response delays to simulate typing
-- **Conversation Memory**: Maintains context throughout the chat
-- **Personality Quirks**: Casual language, occasional typos, opinions
-- **Fallback System**: Works even if OpenAI API is unavailable
-
-## 🏗️ Architecture
-
-- **Frontend**: Vanilla JavaScript + Socket.IO client
-- **Backend**: Flask + Flask-SocketIO
-- **Real-time**: WebSocket connections
-- **Queue System**: Redis-backed matchmaking
-- **AI Integration**: OpenAI GPT-3.5-turbo
-
-## 📊 Performance
-
-- **Concurrent Users**: 100+ simultaneous conversations
-- **Message Latency**: <500ms delivery time
-- **Bot Response Time**: 1-4 seconds (human-like)
-- **Memory Usage**: Optimized session cleanup
-
-## 🚦 Production Deployment
-
-### Using Gunicorn
-
-```bash
-gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5000 app:app
-```
-
-### Using Docker
-
-```dockerfile
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 5000
-CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "--bind", "0.0.0.0:5000", "app:app"]
-```
-
-### Environment Variables for Production
-
-```bash
-export SECRET_KEY="your-production-secret-key"
-export OPENAI_API_KEY="sk-your-production-api-key"
-export REDIS_URL="redis://your-redis-server:6379"
-export DEBUG=False
-export FLASK_ENV=production
-```
-
-## 🔧 Development
-
-### Running in Development Mode
-
-```bash
-export FLASK_ENV=development
-export DEBUG=True
-python app.py
-```
-
-### Testing the Bot
-
-The bot is designed to be convincing. Test strategies:
-- Ask about personal experiences
-- Use complex language patterns  
-- Test emotional responses
-- Check consistency over time
-
-## 📈 Monitoring
-
-### Health Check
-
-```bash
-curl http://localhost:5000/health
-```
-
-### Game Statistics
-
-The game state tracks:
-- Queue size
-- Active sessions  
-- Bot vs human matches
-- Connected users
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Redis Connection Error**:
-```bash
-# Start Redis server
-redis-server
-# Or install Redis
-sudo apt-get install redis-server  # Ubuntu
-brew install redis                 # macOS
-```
-
-**OpenAI API Error**:
-- Verify API key is correct
-- Check API quota/billing
-- Bot will use fallback responses if API fails
-
-**WebSocket Issues**:
-- Ensure no firewall blocking connections
-- Check browser console for errors
-- Try refreshing the page
-
-### Logs
-
-Application logs show:
-- User connections/disconnections
-- Queue status changes
-- Session creation/cleanup
-- Bot response errors
-
-## 🎯 MVP Scope
-
-### ✅ Implemented Features
-- Web-based interface (no downloads)
-- 30-second queue with human prioritization
-- 3-minute timed conversations
-- Real-time messaging
-- Bot/Human decision phase
-- Results revelation
-- Play again functionality
-
-### 🚫 Intentionally Excluded (Out of Scope)
-- User accounts/registration
-- Conversation history
-- Leaderboards
-- Multiple bot personalities
-- Mobile apps
-- Analytics dashboard
-
-## 📄 License
-
-MIT License - Feel free to use and modify!
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+No Redis, database, or API credentials (other than OpenAI) are required.
 
 ---
 
-**Ready to test your Turing Test skills?** 🧠✨
+## 🚀 Running Locally
+
+### 1. Install requirements
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Add your OpenAI key
+Create a `.env` file:
+```
+OPENAI_API_KEY=sk-your-key
+```
+
+### 3. Run the app
+```bash
+python app.py
+```
+
+### 4. Open your browser
+Go to: [http://localhost:5000](http://localhost:5000)
+
+You can open two tabs to test human-to-human matching.
+
+---
+
+## 💬 Game Flow
+
+1. **Queue Phase** – You join a matchmaking queue.  
+   If no human is found within ~20 seconds, a bot is assigned.
+2. **Chat Phase** – 3-minute real-time conversation.
+3. **Decision Phase** – You guess if your partner was a **Bot** or **Human**.
+4. **Results** – Truth is revealed!
+
+---
+
+## 🤖 The AI Bot
+
+- Powered by **OpenAI GPT-3.5-Turbo**
+- Uses a detailed “personality prompt” to sound natural
+- Mimics human delays (1–4 s response)
+- Adds casual imperfections (typos, slang, “lol”, etc.)
+- Uses canned replies if API fails (no downtime)
+
+---
+
+## 🧠 Architecture
+
+| Layer | Technology |
+|-------|-------------|
+| Web framework | Flask |
+| Realtime engine | Flask-SocketIO |
+| Storage | In-memory via FakeRedis |
+| AI | OpenAI GPT-3.5-Turbo |
+| Frontend | Simple HTML + JS (Socket.IO client) |
+
+---
+
+## 🏗️ Deploying on Render
+
+Render automatically detects Python apps and sets the `$PORT` variable.
+
+### 1. Add `wsgi.py`
+
+```python
+from app import app, socketio
+
+if __name__ == "__main__":
+    socketio.run(app)
+```
+
+### 2. Add `render.yaml`
+
+```yaml
+services:
+  - type: web
+    name: amiabot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --worker-class eventlet -w 1 wsgi:app
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+```
+
+### 3. Add to `requirements.txt`
+
+```
+gunicorn
+eventlet
+```
+
+That’s it — push to GitHub and connect the repo to Render.
+
+---
+
+## 🔍 Debugging & Health Checks
+
+| Endpoint | Description |
+|-----------|--------------|
+| `/health` | Simple “OK” check |
+| `/stats` | Returns queue and session counts |
+| `/debug` | Shows active sessions (for development only) |
+| `/test_bot` | Tests bot connectivity |
+
+Logs show user connections, match events, and bot activity.
+
+---
+
+## 🧱 Limitations (MVP)
+
+- Data is not persisted — resets on each restart.
+- No user accounts or analytics.
+- Only one default AI personality.
+- Not designed for high concurrency (single server instance).
+
+---
+
+## 🪄 License
+
+MIT License — free to use, modify, and deploy.
+
+---
+
+**Try it out, chat with the AI, and see if you can tell who’s real! 🤖🧠**
