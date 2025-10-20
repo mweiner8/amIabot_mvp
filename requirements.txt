@@ -1,0 +1,28 @@
+# Core Flask framework
+Flask
+Flask-SocketIO
+
+# WebSocket support
+python-socketio
+python-engineio
+
+# Redis for queue management and session storage
+redis
+fakeredis
+
+# OpenAI API for bot conversations
+openai
+
+# WSGI server for production deployment
+gunicorn
+
+# WebSocket handling (using threading mode)
+# eventlet  # Removed - causes connection issues on Windows
+
+# Additional utilities
+python-dotenv
+click
+itsdangerous
+Jinja2
+MarkupSafe
+Werkzeug

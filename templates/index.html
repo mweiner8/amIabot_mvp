@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AmIABot.com - Can You Tell Human from AI?</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            width: 90%;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 2rem;
+        }
+        
+        .screen {
+            display: none;
+        }
+        
+        .screen.active {
+            display: block;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+            margin: 1rem 0;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            color: #ff6b6b;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .chat-container {
+            height: 400px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 1rem;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 1rem;
+            padding: 0.8rem 1rem;
+            border-radius: 15px;
+            max-width: 80%;
+            word-wrap: break-word;
+            display: inline-block;
+            clear: both;
+        }
+
+        .message.sent {
+            background: #667eea;
+            color: white;
+            float: right;
+            text-align: left;
+        }
+
+        .message.received {
+            background: white;
+            border: 2px solid #e9ecef;
+            float: left;
+        }
+
+        /* Clearfix for message containers */
+        .chat-container::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 0.8rem 1rem;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            max-width: 80px;
+            margin-bottom: 1rem;
+            float: left;
+            clear: both;
+        }
+
+        .typing-indicator.active {
+            display: inline-block;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: stretch;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1rem;
+            outline: none;
+            resize: vertical;
+            min-height: 50px;
+        }
+
+        #messageInput:focus {
+            border-color: #667eea;
+        }
+
+        #sendBtn {
+            padding: 0.75rem;
+            border-radius: 10px;
+            white-space: nowrap;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .decision-buttons {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .btn-bot {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+        }
+
+        .btn-human {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        }
+
+        .result {
+            text-align: center;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+
+        .result.correct {
+            background: linear-gradient(45deg, #56ab2f, #a8e6cf);
+            color: white;
+        }
+
+        .result.incorrect {
+            background: linear-gradient(45deg, #ff416c, #ff4b2b);
+            color: white;
+        }
+
+        .status {
+            text-align: center;
+            padding: 1rem;
+            font-size: 1.1rem;
+            color: #666;
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .connection-status.connected {
+            background: #28a745;
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: #dc3545;
+            color: white;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #e9ecef;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            margin: 2rem auto;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                margin: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .content {
+                padding: 1.5rem;
+            }
+
+            .decision-buttons {
+                flex-direction: column;
+            }
+
+            .chat-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+
+    <div class="container">
+        <div class="header">
+            <h1>AmIABot.com</h1>
+            <p>Can you tell if you're chatting with a human or AI?</p>
+        </div>
+
+        <div class="content">
+            <!-- Start Screen -->
+            <div id="startScreen" class="screen active">
+                <div class="status">
+                    <p>Test your ability to distinguish between human and AI conversation!</p>
+                    <p>You'll have 3 minutes to chat, then decide: <strong>Bot or Human?</strong></p>
+                </div>
+                <button class="btn" onclick="startGame()">Start Game</button>
+            </div>
+
+            <!-- Queue Screen -->
+            <div id="queueScreen" class="screen">
+                <div class="status">
+                    <p>Searching for conversation partner...</p>
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <!-- Chat Screen -->
+            <div id="chatScreen" class="screen">
+                <div class="timer" id="chatTimer">3:00</div>
+                <div id="chatContainer" class="chat-container">
+                    <div id="typingIndicator" class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="messageInput" placeholder="Type your message..." maxlength="500">
+                    <button id="sendBtn" class="btn">➤</button>
+                </div>
+            </div>
+
+            <!-- Decision Screen -->
+            <div id="decisionScreen" class="screen">
+                <div class="status">
+                    <p><strong>Time's up!</strong></p>
+                    <p>Based on your conversation, what do you think your partner was?</p>
+                    <div class="timer" id="decisionTimer">30</div>
+                </div>
+                <div class="decision-buttons">
+                    <button class="btn btn-bot" onclick="makeDecision('bot')">🤖 Bot</button>
+                    <button class="btn btn-human" onclick="makeDecision('human')">👤 Human</button>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="resultsScreen" class="screen">
+                <div id="resultContent" class="result">
+                    <!-- Results will be populated here -->
+                </div>
+                <button class="btn" onclick="playAgain()">Play Again</button>
+            </div>
+
+            <!-- Error Screen -->
+            <div id="errorScreen" class="screen">
+                <div class="status">
+                    <p><strong>Connection Lost</strong></p>
+                    <p id="errorMessage">Your partner disconnected or there was a connection error.</p>
+                </div>
+                <button class="btn" onclick="playAgain()">Try Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Socket.IO connection
+        const socket = io();
+
+        // Game state
+        let gameState = 'start';
+        let currentSession = null;
+        let chatTimer = null;
+        let decisionTimer = null;
+
+        // Connection status tracking
+        function updateConnectionStatus(status) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.textContent = status;
+            statusEl.className = `connection-status ${status}`;
+        }
+
+        // Socket event handlers
+        socket.on('connect', function() {
+            console.log('Connected to server');
+            updateConnectionStatus('connected');
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Disconnected from server');
+            updateConnectionStatus('disconnected');
+            if (gameState !== 'start' && gameState !== 'results') {
+                showError('Connection lost. Please refresh the page.');
+            }
+        });
+
+        socket.on('queue_joined', function(data) {
+            console.log('Joined queue, position:', data.position);
+            // No timer needed, just show spinner
+        });
+
+        socket.on('match_found', function(data) {
+            console.log('=== FRONTEND: match_found received ===', data);
+            currentSession = data.session_id;
+            gameState = 'chat';
+            showScreen('chatScreen');
+            startChatTimer();
+        });
+
+        socket.on('new_message', function(data) {
+            console.log('=== FRONTEND: new_message received ===', data);
+            hideTypingIndicator();
+            displayMessage(data.message, 'received');
+        });
+
+        socket.on('message_sent', function(data) {
+            // Message already displayed when sent
+            console.log('=== FRONTEND: message_sent received ===', data);
+        });
+
+        socket.on('partner_typing', function(data) {
+            if (data.typing) {
+                showTypingIndicator();
+            } else {
+                hideTypingIndicator();
+            }
+        });
+
+        socket.on('conversation_ended', function(data) {
+            gameState = 'decision';
+            showScreen('decisionScreen');
+            startDecisionTimer();
+        });
+
+        socket.on('results', function(data) {
+            showResults(data);
+        });
+
+        socket.on('partner_disconnected', function() {
+            showError('Your conversation partner disconnected.');
+        });
+
+        socket.on('decision_recorded', function(data) {
+            const decisionScreen = document.getElementById('decisionScreen');
+            decisionScreen.querySelector('.status').innerHTML = `
+                <p><strong>Decision Recorded!</strong></p>
+                <p>${data.message}</p>
+            `;
+            decisionScreen.querySelector('.decision-buttons').style.display = 'none';
+        });
+
+        socket.on('error', function(data) {
+            console.error('Socket error:', data);
+            showError(data.message || 'An error occurred');
+        });
+
+
+        // Typing indicator functions
+        function showTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            indicator.classList.add('active');
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            indicator.classList.remove('active');
+        }
+
+        // UI Functions
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            showScreen('errorScreen');
+            clearAllTimers();
+        }
+
+        function startGame() {
+            if (gameState !== 'start') return;
+
+            gameState = 'queue';
+            showScreen('queueScreen');
+            socket.emit('join_queue');
+        }
+
+        function startChatTimer() {
+            let timeLeft = 180; // 3 minutes
+            const timerEl = document.getElementById('chatTimer');
+
+            function updateTimer() {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                // Change color as time runs out
+                if (timeLeft <= 30) {
+                    timerEl.style.color = '#ff416c';
+                } else if (timeLeft <= 60) {
+                    timerEl.style.color = '#ff8c00';
+                }
+            }
+
+            updateTimer();
+
+            chatTimer = setInterval(() => {
+                timeLeft--;
+                updateTimer();
+
+                if (timeLeft <= 0) {
+                    clearInterval(chatTimer);
+                }
+            }, 1000);
+        }
+
+        function startDecisionTimer() {
+            let timeLeft = 30;
+            const timerEl = document.getElementById('decisionTimer');
+
+            decisionTimer = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = timeLeft;
+
+                // Change color as time runs out
+                if (timeLeft <= 10) {
+                    timerEl.style.color = '#ff416c';
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(decisionTimer);
+                    // Auto-submit random decision if time runs out
+                    makeDecision(Math.random() > 0.5 ? 'bot' : 'human');
+                }
+            }, 1000);
+        }
+
+        function clearAllTimers() {
+            if (chatTimer) clearInterval(chatTimer);
+            if (decisionTimer) clearInterval(decisionTimer);
+            if (typingTimeout) clearTimeout(typingTimeout);
+            if (typingDebounceTimeout) clearTimeout(typingDebounceTimeout);
+            
+            // Stop typing indicator if active
+            stopTyping();
+        }
+
+        function displayMessage(message, type) {
+            const chatContainer = document.getElementById('chatContainer');
+
+            // Create a wrapper div for proper clearing
+            const messageWrapper = document.createElement('div');
+            messageWrapper.style.width = '100%';
+            messageWrapper.style.overflow = 'auto';
+
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            messageEl.textContent = message;
+
+            messageWrapper.appendChild(messageEl);
+
+            // Insert before typing indicator
+            const typingIndicator = document.getElementById('typingIndicator');
+            chatContainer.insertBefore(messageWrapper, typingIndicator);
+
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            console.log('=== FRONTEND: sendMessage called ===', { message, gameState });
+
+            if (!message || gameState !== 'chat') {
+                console.log('Message not sent:', { message: !!message, gameState });
+                return;
+            }
+
+            displayMessage(message, 'sent');
+            console.log('Emitting send_message:', { message: message });
+            socket.emit('send_message', { message: message });
+            input.value = '';
+
+            // Stop typing indicator when message is sent
+            stopTyping();
+            
+            // Clear timeout
+            if (typingTimeout) {
+                clearTimeout(typingTimeout);
+                typingTimeout = null;
+            }
+        }
+
+        function makeDecision(decision) {
+            if (gameState !== 'decision') return;
+
+            clearInterval(decisionTimer);
+            socket.emit('make_decision', { decision: decision });
+
+            // Show waiting message
+            const decisionScreen = document.getElementById('decisionScreen');
+            decisionScreen.querySelector('.status').innerHTML = `
+                <p><strong>Decision Submitted!</strong></p>
+                <p>Analyzing results...</p>
+            `;
+            decisionScreen.querySelector('.decision-buttons').style.display = 'none';
+        }
+
+        function showResults(data) {
+            const resultContent = document.getElementById('resultContent');
+            const isCorrect = data.correct;
+            const partnerType = data.actual;
+            const userGuess = data.decision;
+
+            resultContent.className = `result ${isCorrect ? 'correct' : 'incorrect'}`;
+
+            let resultHtml = `
+                <h2>${isCorrect ? '🎉 Correct!' : '❌ Incorrect!'}</h2>
+                <p><strong>Your partner was:</strong> ${partnerType === 'bot' ? '🤖 AI Bot' : '👤 Human'}</p>
+                <p><strong>You guessed:</strong> ${userGuess === 'bot' ? '🤖 Bot' : '👤 Human'}</p>
+                <p>${isCorrect ? 'Great job detecting the difference!' : 'Better luck next time!'}</p>
+            `;
+
+            resultContent.innerHTML = resultHtml;
+            showScreen('resultsScreen');
+            gameState = 'results';
+        }
+
+        function playAgain() {
+            console.log('=== PLAY AGAIN === Resetting game...');
+            
+            // Clear all state
+            clearAllTimers();
+            hideTypingIndicator();
+
+            // Reset game state
+            gameState = 'start';
+            currentSession = null;
+            
+            // Reset typing state
+            isTyping = false;
+            lastTypingTime = 0;
+            if (typingTimeout) {
+                clearTimeout(typingTimeout);
+                typingTimeout = null;
+            }
+            if (typingDebounceTimeout) {
+                clearTimeout(typingDebounceTimeout);
+                typingDebounceTimeout = null;
+            }
+
+            // Clear chat
+            const chatContainer = document.getElementById('chatContainer');
+            const typingIndicator = document.getElementById('typingIndicator');
+            chatContainer.innerHTML = '';
+            chatContainer.appendChild(typingIndicator);
+
+            document.getElementById('messageInput').value = '';
+
+            // Reset timers colors
+            document.getElementById('chatTimer').style.color = '#ff6b6b';
+            document.getElementById('decisionTimer').style.color = '#ff6b6b';
+
+            // Reset decision screen
+            const decisionScreen = document.getElementById('decisionScreen');
+            decisionScreen.querySelector('.status').innerHTML = `
+                <p><strong>Time's up!</strong></p>
+                <p>Based on your conversation, what do you think your partner was?</p>
+                <div class="timer" id="decisionTimer">30</div>
+            `;
+            decisionScreen.querySelector('.decision-buttons').style.display = 'flex';
+
+            // Reset connection status
+            updateConnectionStatus('connected');
+
+            // Show start screen
+            showScreen('startScreen');
+
+            console.log('Game reset, ready to play again');
+        }
+
+        // Event listeners
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Typing indicator for human users
+        let isTyping = false;
+        let typingTimeout = null;
+        let lastTypingTime = 0;
+        let typingDebounceTimeout = null;
+        
+        function startTyping() {
+            if (gameState !== 'chat' || isTyping) return;
+            
+            isTyping = true;
+            lastTypingTime = Date.now();
+            socket.emit('typing', { typing: true });
+            console.log('Started typing');
+        }
+        
+        function stopTyping() {
+            if (!isTyping) return;
+            
+            isTyping = false;
+            socket.emit('typing', { typing: false });
+            console.log('Stopped typing');
+        }
+        
+        function resetTypingTimeout() {
+            // Clear existing timeout
+            if (typingTimeout) {
+                clearTimeout(typingTimeout);
+                typingTimeout = null;
+            }
+
+            // Set timeout to stop typing after 2 seconds of inactivity
+            typingTimeout = setTimeout(() => {
+                // Double-check that enough time has passed
+                if (Date.now() - lastTypingTime >= 1900) {
+                    stopTyping();
+                }
+            }, 2000);
+        }
+        
+        // Handle typing with multiple event types for better Chrome compatibility
+        const messageInput = document.getElementById('messageInput');
+        
+        function handleTyping() {
+            if (gameState !== 'chat') return;
+
+            // Update last typing time
+            lastTypingTime = Date.now();
+
+            // Debounce rapid typing events
+            if (typingDebounceTimeout) {
+                clearTimeout(typingDebounceTimeout);
+            }
+            
+            typingDebounceTimeout = setTimeout(() => {
+                // Start typing if not already
+                startTyping();
+
+                // Reset the timeout
+                resetTypingTimeout();
+            }, 100); // 100ms debounce
+        }
+        
+        // Multiple event listeners for better browser compatibility
+        messageInput.addEventListener('input', handleTyping);
+        messageInput.addEventListener('keydown', handleTyping);
+        messageInput.addEventListener('keyup', handleTyping);
+
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
+        
+        // Stop typing when user leaves the input field
+        document.getElementById('messageInput').addEventListener('blur', function() {
+            if (isTyping) {
+                stopTyping();
+                if (typingTimeout) {
+                    clearTimeout(typingTimeout);
+                    typingTimeout = null;
+                }
+            }
+        });
+
+        // Disable message input when not in chat
+        setInterval(() => {
+            const input = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const isActive = gameState === 'chat';
+
+            input.disabled = !isActive;
+            sendBtn.disabled = !isActive;
+
+            if (isActive) {
+                input.placeholder = 'Type your message...';
+            } else {
+                input.placeholder = 'Chat not active';
+                // Stop typing if game state changes away from chat
+                if (isTyping) {
+                    stopTyping();
+                    if (typingTimeout) {
+                        clearTimeout(typingTimeout);
+                        typingTimeout = null;
+                    }
+                }
+            }
+        }, 100);
+
+        // Autofocus input when chat starts
+        const observer = new MutationObserver(() => {
+            if (gameState === 'chat' && document.getElementById('chatScreen').classList.contains('active')) {
+                document.getElementById('messageInput').focus();
+            }
+        });
+        
+        observer.observe(document.getElementById('chatScreen'), {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    </script>
+</body>
+</html>
