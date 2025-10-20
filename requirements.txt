@@ -16,8 +16,8 @@ openai
 # WSGI server for production deployment
 gunicorn
 
-# WebSocket handling (using threading mode)
-# eventlet  # Removed - causes connection issues on Windows
+# WebSocket handling
+eventlet
 
 # Additional utilities
 python-dotenv

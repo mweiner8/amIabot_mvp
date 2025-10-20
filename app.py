@@ -25,9 +25,7 @@ from game_state import GameState
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Initialize Socket.IO with CORS support
-# Using threading mode for better Windows compatibility
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Initialize FakeRedis for development (no Redis server needed)
 try:
