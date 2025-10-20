@@ -26,6 +26,8 @@ from game_state import GameState
 app = Flask(__name__)
 app.config.from_object(Config)
 
+monkey_patch()
+
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Initialize FakeRedis for development (no Redis server needed)
@@ -580,8 +582,6 @@ if __name__ == '__main__':
 
     # Use port 5000 by default (Flask default)
     port = int(os.environ.get('PORT', 5000))
-
-    monkey_patch()
 
     socketio.run(
         app,
