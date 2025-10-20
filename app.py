@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
+from eventlet import monkey_patch
 
 # Load environment variables from .env file
 load_dotenv()
@@ -579,6 +580,8 @@ if __name__ == '__main__':
 
     # Use port 5000 by default (Flask default)
     port = int(os.environ.get('PORT', 5000))
+
+    monkey_patch()
 
     socketio.run(
         app,
